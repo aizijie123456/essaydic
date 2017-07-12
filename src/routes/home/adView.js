@@ -24,7 +24,7 @@ class adView extends Component {
         return (
             <View>
                 <View>
-                    <Image source={require('./../../../resource/logo.png')} />
+                    <Image source={require('./../../../resource/ad.png')} />
                 </View>
                 <TouchableHighlight onPress={() => { Actions.home(); }}>
                     <View style={{ justifyContent: 'center', alignItems: 'center', position: 'absolute', bottom: 40, right: 40, width: 50, height: 50, borderRadius: 300 / PixelRatio.get(), borderWidth: 2, backgroundColor: 'rgba(182,182,182,0.5)' }}>
