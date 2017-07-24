@@ -1,5 +1,5 @@
 {
-    "host": "",
+    "host": "http://localhost:8080/muggle",
     "path_access_token": "",
     "client_id": "",
     "client_secret": "",

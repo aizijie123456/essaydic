@@ -13,7 +13,12 @@ const HTTP_EXCEPTIONS_FOR_SYSTEM = [
 const HTTP_EXCEPTIONS_FOR_NETWORK = [
     { code: 408, type: 'Network', message: '网络超时，请重试' },
 ];
-
+function assembleBody(options) {
+    if (!options.body) {
+        return undefined;
+    }
+    return (options.isJson === true) ? JSON.stringify(options.body) : toQueryString(options.body);
+}
 function assembleOptions(options, restMethod) {
     let newOptions = options;
     if (!options) {
@@ -39,7 +44,7 @@ function toQueryString(obj) {
     }).join('&') : '';
 }
 
-async function buildOptions(options) {
+function buildOptions(options) {
     let headers = options.headers;
     return {
         ...options,
@@ -50,9 +55,9 @@ async function buildOptions(options) {
     }
 }
 
-async function buildUrl(url, options) {
+function buildUrl(url, options) {
     let newURL = `${HOST}${url}`;
-    const parameters = toQueryString(options.params);
+    const paramStr = toQueryString(options.params);
     if (paramStr && paramStr.length > 0) {
         newURL += `?${paramStr}`;
     }
@@ -81,12 +86,69 @@ function timeout(ms, promise) {
     });
 }
 
+function filterException(array, response, data) {
+    for (let id = 0; id < array.length; id += 1) {
+        const entry = array[id];
+        if ((entry.code !== response.status)) {
+            return false;
+        }
+
+        if (!data.errors) {
+            return false;
+        }
+
+        for (let i = 0; i < data.errors.length; i += 1) {
+            const err = data.errors[i];
+            if ((entry.type === err.type) && (entry.message === err.message)) {
+                console.debug('Filter in exception matching: ', entry);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+async function checkStatus(response) {
+    let data = response;
+    console.log(response);
+    if (response.status !== HTTP_STATUS_FETCH_ERROR && response.status !== HTTP_STATUS_NETWORK_ERROR) {
+        if (response.headers.get('content-length') === '0') {
+            data = {};
+        } else {
+            data = await response.json();
+        }
+    }
+
+    if (response.ok) {
+        return data;
+    }
+
+    console.debug(`Status: ${response.status} statusText: ${response.statusText}`);
+    console.debug('Exception data:', data);
+
+    const isAPPException = filterException(HTTP_EXCEPTIONS_FOR_APP, response, data);
+    const isSystemException = filterException(HTTP_EXCEPTIONS_FOR_SYSTEM, response, data);
+    if (!isAPPException || isSystemException) {
+        Toast.fail('系统异常', 2);
+    }
+
+    const isNetworkException = filterException(HTTP_EXCEPTIONS_FOR_NETWORK, response, data);
+    if (isNetworkException) {
+        Toast.fail('网络连接超时，请检查网络', 2);
+    }
+
+    const error = new Error(response.statusText);
+    error.status = response.status;
+    error.data = data;
+    throw error;
+}
 export async function request(url, options) {
-    const buildOptions = await buildOptions(options);
     const buildURL = buildUrl(url, options);
+    const buildOption = buildOptions(options);
     let response = {};
     try {
-        response = await timeout(20 * 1000, fetch(buildURL, buildOptions));
+        response = await timeout(20 * 1000, fetch(buildURL, buildOption));
     } catch (err) {
         if (err.network) {
             response = {
@@ -103,6 +165,20 @@ export async function request(url, options) {
             };
         }
     }
+
+    const data = await checkStatus(response);
+
+    const ret = {
+        data,
+        headers: {},
+    };
+
+    if (response.headers.get('x-total-count')) {
+        ret.headers['x-total-count'] = response.headers.get('x-total-count');
+    }
+
+    console.log('Response: ', ret);
+    return ret;
 }
 
 export function post(url, options) {
@@ -110,7 +186,8 @@ export function post(url, options) {
 }
 
 export function get(url, options) {
-    return request(url, assembleOptions(options, 'GET'));
+    const option = assembleOptions(options, 'GET');
+    return request(url, option);
 }
 
 export function put(url, options) {

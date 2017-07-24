@@ -41,7 +41,6 @@ adView.propTypes = {
 };
 
 const mapStateToProps = (state) => {
-    console.log([123, state]);
     return {
         adState: state.ad,
     };

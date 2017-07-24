@@ -1,7 +1,7 @@
 import React, { PropTypes, Component } from 'react';
 import { connect } from 'dva/mobile';
 import { View } from 'react-native';
-import { TabBar } from 'antd-mobile';
+import { TabBar, Text } from 'antd-mobile';
 
 /**
  * router
@@ -17,6 +17,15 @@ class HomeView extends Component {
         };
     }
 
+    componentWillMount() {
+        const { dispatch } = this.props;
+        dispatch({
+            type: 'home/fetchDataDemo',
+            uid: '1',
+        });
+    }
+
+
     render() {
         return (
             <TabBar>
@@ -27,7 +36,12 @@ class HomeView extends Component {
                     selectedIcon={require('./../../../resource/homeTab/home_selected.png')}
                     title="tab1"
                 >
-                    <View style={{ flex: 1, backgroundColor: 'green' }} />
+                    <View style={{ flex: 1, backgroundColor: 'green' }} >
+                        <View style={{ height: 20 }}></View>
+                        <Text>{this.props.id}</Text>
+                        <Text>{this.props.name}</Text>
+                        <Text>{this.props.desc}</Text>
+                    </View>
                 </TabBarItem>
                 <TabBarItem
                     onPress={() => { this.setState({ selectedTab: 'tab2' }) }}
@@ -46,5 +60,10 @@ class HomeView extends Component {
 HomeView.propTypes = {
 };
 
-const mapStateToProps = () => ({});
+const mapStateToProps = (state) => {
+    const id = state.home.id;
+    const name = state.home.name;
+    const desc = state.home.desc;
+    return { id, name, desc };
+};
 export default connect(mapStateToProps)(HomeView);
